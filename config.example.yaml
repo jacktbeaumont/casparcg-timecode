@@ -1,0 +1,23 @@
+# CasparCG connection
+caspar_host: "localhost"
+caspar_port: 5250
+caspar_channel: 1
+
+# Audio input device name (omit to use the system default)
+audio_device: "BlackHole 2ch"
+
+# Milliseconds without an LTC frame before playback is considered paused
+pause_detection_threshold_ms: 50
+
+# Optional overrides (shown with defaults)
+# resync_threshold_frames: 10
+# tc_fallback_fps: 25
+# tcp_timeout_secs: 5
+
+# Tracks mapping timecodes to CasparCG media layers
+tracks:
+  - name: "Main Video"
+    tc_start: "01:00:00:00"
+    media:
+      - layer: 10
+        file: "MY_VIDEO"

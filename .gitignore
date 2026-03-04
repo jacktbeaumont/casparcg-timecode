@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+
+# Config
+config.yaml
+
+# Build files
+/target
+
+# Claude Code
+.claude

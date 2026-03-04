@@ -1,0 +1,19 @@
+[package]
+name = "casparcg-timecode"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.50.0", features = ["full"] }
+cpal = "0.17.3"
+timecode-coder = { version = "0.3", features = ["decode_ltc"] }
+clap = { version = "4.5.60", features = ["derive"] }
+anyhow = "1.0.102"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9.33"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ratatui = "0.30"
+crossterm = "0.29"
+chrono = "0.4"
+tokio-util = "0.7"
