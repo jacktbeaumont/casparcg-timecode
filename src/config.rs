@@ -68,12 +68,18 @@ impl TryFrom<&str> for Timecode {
         }
         let h: u8 = parts[0].parse()?;
         let m: u8 = parts[1].parse()?;
-        let s: u8 = parts[2].parse()?;
+        let sec: u8 = parts[2].parse()?;
         let f: u8 = parts[3].parse()?;
+        if m >= 60 {
+            anyhow::bail!("invalid minutes in timecode: {}", s);
+        }
+        if sec >= 60 {
+            anyhow::bail!("invalid seconds in timecode: {}", s);
+        }
         Ok(Timecode {
             hours: h,
             minutes: m,
-            seconds: s,
+            seconds: sec,
             frames: f,
         })
     }
