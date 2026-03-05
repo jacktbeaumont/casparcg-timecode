@@ -3,7 +3,6 @@
 use crate::config::LayerId;
 use crate::media_controller::LayerState;
 use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
 
 pub const MAX_LOGS: usize = 200;
 
@@ -50,9 +49,6 @@ pub struct AppState {
     pub layers: Vec<LayerDisplay>,
     /// Recent log entries, newest first.
     pub logs: VecDeque<LogEntry>,
-    /// Monotonic timestamp of the last timecode event.
-    // TODO remove this
-    pub last_tc_update: Option<Instant>,
 }
 
 impl AppState {
@@ -62,7 +58,6 @@ impl AppState {
             tc_status: TcStatus::Paused,
             layers: Vec::new(),
             logs: VecDeque::new(),
-            last_tc_update: None,
         }
     }
 
@@ -79,7 +74,6 @@ impl AppState {
             UiMessage::Timecode { tc, status } => {
                 self.tc = tc;
                 self.tc_status = status;
-                self.last_tc_update = Some(Instant::now());
             }
             UiMessage::Layers(layers) => {
                 self.layers = layers;
