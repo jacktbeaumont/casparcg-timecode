@@ -265,6 +265,7 @@ impl MediaController {
     /// Handles a pause event by pausing all currently playing layers.
     async fn handle_paused(&mut self, pos: &TimecodePosition) -> Result<()> {
         tracing::info!("Pause at {}", pos);
+        self.amcp.begin_batch().await?;
         for (layer, state) in &mut self.layer_states {
             if let LayerState::Playing { filename } = state {
                 tracing::info!("Pausing layer {} ({})", layer, filename);
@@ -277,6 +278,7 @@ impl MediaController {
                 };
             }
         }
+        self.amcp.end_batch().await?;
         self.last_tc_frame = Some(pos.total_frames);
         self.was_playing = false;
         Ok(())
@@ -309,6 +311,7 @@ impl MediaController {
         targets: &HashMap<LayerId, Option<usize>>,
         pos: &TimecodePosition,
     ) -> Result<()> {
+        self.amcp.begin_batch().await?;
         for (&layer, target) in targets {
             let state = self.layer_states.entry(layer).or_default();
             match target {
@@ -339,6 +342,7 @@ impl MediaController {
                 }
             }
         }
+        self.amcp.end_batch().await?;
         Ok(())
     }
 
@@ -356,6 +360,7 @@ impl MediaController {
         targets: &HashMap<LayerId, Option<usize>>,
         pos: &TimecodePosition,
     ) -> Result<()> {
+        self.amcp.begin_batch().await?;
         for (&layer, target) in targets {
             let state = self.layer_states.entry(layer).or_default();
             match target {
@@ -387,6 +392,7 @@ impl MediaController {
                 }
             }
         }
+        self.amcp.end_batch().await?;
         Ok(())
     }
 }

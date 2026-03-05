@@ -1,6 +1,6 @@
 //! AMCP client.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::TcpStream;
@@ -127,6 +127,27 @@ impl AmcpClient {
             .await
             .map_err(|_| anyhow!("read timed out"))??;
         Ok(line)
+    }
+
+    /// Begin a batch transaction.
+    ///
+    /// All subsequent commands are queued until [`end_batch`](Self::end_batch)
+    /// is called, at which point they execute atomically on the server.
+    pub async fn begin_batch(&mut self) -> Result<()> {
+        self.send("BEGIN").await?;
+        Ok(())
+    }
+
+    /// Commit a batch transaction, executing all queued commands atomically.
+    pub async fn end_batch(&mut self) -> Result<()> {
+        self.send("COMMIT").await?;
+        Ok(())
+    }
+
+    /// Discard a batch transaction without executing.
+    pub async fn discard_batch(&mut self) -> Result<()> {
+        self.send("DISCARD").await?;
+        Ok(())
     }
 
     /// Play a file on a layer, optionally seeking to a frame
