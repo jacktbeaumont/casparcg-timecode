@@ -326,9 +326,13 @@ impl MediaController {
                         prior_state = ?*state,
                         "Seeking layer to target frame",
                     );
-                    self.amcp
+                    if let Err(e) = self.amcp
                         .play(self.config.channel, *layer, &media.filename, Some(offset))
-                        .await?;
+                        .await
+                    {
+                        tracing::error!("failed to play on layer {}: {}", layer, e);
+                        continue;
+                    }
                     *state = LayerState::Playing {
                         filename: media.filename.clone(),
                     };
@@ -336,7 +340,10 @@ impl MediaController {
                 None => {
                     if !matches!(state, LayerState::Stopped) {
                         tracing::info!("Stopping layer {}", layer);
-                        self.amcp.stop(self.config.channel, *layer).await?;
+                        if let Err(e) = self.amcp.stop(self.config.channel, *layer).await {
+                            tracing::error!("failed to stop layer {}: {}", layer, e);
+                            continue;
+                        }
                         *state = LayerState::Stopped;
                     }
                 }
@@ -375,9 +382,13 @@ impl MediaController {
                             seek_frame = offset,
                             "Starting new media on layer",
                         );
-                        self.amcp
+                        if let Err(e) = self.amcp
                             .play(self.config.channel, *layer, &media.filename, Some(offset))
-                            .await?;
+                            .await
+                        {
+                            tracing::error!("failed to play on layer {}: {}", layer, e);
+                            continue;
+                        }
                         *state = LayerState::Playing {
                             filename: media.filename.clone(),
                         };
@@ -386,7 +397,10 @@ impl MediaController {
                 None => {
                     if !matches!(state, LayerState::Stopped) {
                         tracing::info!("Stopping layer {} (media ended)", layer);
-                        self.amcp.stop(self.config.channel, *layer).await?;
+                        if let Err(e) = self.amcp.stop(self.config.channel, *layer).await {
+                            tracing::error!("failed to stop layer {}: {}", layer, e);
+                            continue;
+                        }
                         *state = LayerState::Stopped;
                     }
                 }
