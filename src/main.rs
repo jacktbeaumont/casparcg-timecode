@@ -178,7 +178,12 @@ fn build_audio_stream(
         cpal::SampleFormat::F32 => device.build_input_stream(
             &device_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                let samples: Vec<f32> = data.iter().skip(channel).step_by(channels).copied().collect();
+                let samples: Vec<f32> = data
+                    .iter()
+                    .skip(channel)
+                    .step_by(channels)
+                    .copied()
+                    .collect();
                 let _ = tx.try_send(samples);
             },
             err_fn,
@@ -229,7 +234,7 @@ async fn main() -> Result<()> {
     tracing::info!("loaded config from: {}", args.config);
 
     // Run the main application logic, concurrently with the TUI.
-    let result = {
+    {
         let _tui = tui::enter()?;
 
         let token = CancellationToken::new();
@@ -261,7 +266,5 @@ async fn main() -> Result<()> {
         let _ = tui_task.await;
 
         r
-    };
-
-    result
+    }
 }
