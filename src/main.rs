@@ -96,7 +96,7 @@ async fn run(config: Config, ui_tx: mpsc::Sender<UiMessage>, token: Cancellation
     );
     tracing::info!("listening for LTC timecode (Ctrl+C to stop)");
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Vec<f32>>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<f32>>(64);
     let stream = build_audio_stream(&device, &device_config, channels, tx)?;
     stream.play()?;
 
@@ -153,7 +153,7 @@ fn build_audio_stream(
     device: &cpal::Device,
     device_config: &cpal::SupportedStreamConfig,
     channels: usize,
-    tx: tokio::sync::mpsc::UnboundedSender<Vec<f32>>,
+    tx: tokio::sync::mpsc::Sender<Vec<f32>>,
 ) -> Result<cpal::Stream> {
     let err_fn = |err: cpal::StreamError| {
         tracing::error!("audio stream error: {}", err);
@@ -166,7 +166,7 @@ fn build_audio_stream(
             &device_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
                 let samples: Vec<f32> = data.iter().step_by(channels).copied().collect();
-                let _ = tx.send(samples);
+                let _ = tx.try_send(samples);
             },
             err_fn,
             None,
@@ -179,7 +179,7 @@ fn build_audio_stream(
                     .step_by(channels)
                     .map(|&s| s as f32 / i16::MAX as f32)
                     .collect();
-                let _ = tx_i16.send(samples);
+                let _ = tx_i16.try_send(samples);
             },
             err_fn,
             None,
