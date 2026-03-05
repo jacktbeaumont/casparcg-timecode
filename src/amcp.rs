@@ -343,6 +343,7 @@ impl AmcpClient {
                         parts[4]
                     )
                 })?;
+                // CINF reports frame duration (e.g. "1/25"), invert to get fps.
                 den / num
             }
             None => parts[4]
