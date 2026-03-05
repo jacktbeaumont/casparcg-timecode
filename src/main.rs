@@ -5,7 +5,7 @@ mod timecode_parser;
 mod tui;
 
 use amcp::AmcpClient;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use config::Config;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -67,7 +67,11 @@ fn get_audio_device(config: &Config) -> Result<cpal::Device> {
     }
 }
 
-async fn run(config: Config, ui_tx: mpsc::Sender<UiMessage>, token: CancellationToken) -> Result<()> {
+async fn run(
+    config: Config,
+    ui_tx: mpsc::Sender<UiMessage>,
+    token: CancellationToken,
+) -> Result<()> {
     tracing::info!(
         "connecting to CasparCG at {}:{}",
         config.caspar_host,
@@ -220,6 +224,26 @@ async fn main() -> Result<()> {
         let _tui = tui::enter()?;
 
         let token = CancellationToken::new();
+
+        // Cancel on SIGINT/SIGTERM.
+        let signal_token = token.clone();
+        tokio::spawn(async move {
+            #[cfg(unix)]
+            {
+                use tokio::signal::unix::{SignalKind, signal};
+                let mut sigterm =
+                    signal(SignalKind::terminate()).expect("failed to register SIGTERM handler");
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {}
+                    _ = sigterm.recv() => {}
+                }
+            }
+            #[cfg(not(unix))]
+            tokio::signal::ctrl_c().await.ok();
+
+            signal_token.cancel();
+        });
+
         let tui_task = tokio::spawn(tui::run(ui_rx, token.clone()));
 
         let r = run(config, ui_tx, token.clone()).await;
