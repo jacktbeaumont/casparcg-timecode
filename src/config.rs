@@ -183,6 +183,10 @@ impl Config {
             anyhow::bail!("tcp_timeout_secs must be greater than 0");
         }
 
+        if self.resync_threshold_frames == 0 {
+            anyhow::bail!("resync_threshold_frames must be greater than 0");
+        }
+
         if self.pause_detection_threshold_ms < 10 {
             anyhow::bail!("pause_detection_threshold_ms must be at least 10");
         }
