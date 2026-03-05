@@ -50,10 +50,10 @@ pub struct Timecode {
 impl Timecode {
     /// Converts this timecode to total frames using the given framerate.
     pub fn total_frames(&self, fps: f32) -> u32 {
-        let h = self.hours as u32;
-        let m = self.minutes as u32;
-        let s = self.seconds as u32;
-        let f = self.frames as u32;
+        let h: u32 = self.hours.into();
+        let m: u32 = self.minutes.into();
+        let s: u32 = self.seconds.into();
+        let f: u32 = self.frames.into();
         ((h * 3600 + m * 60 + s) as f32 * fps) as u32 + f
     }
 }
