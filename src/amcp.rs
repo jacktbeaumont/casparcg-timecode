@@ -4,7 +4,9 @@ use anyhow::{Result, anyhow};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::TcpStream;
-use tokio::time::timeout;
+use tokio::time::{Instant, timeout};
+
+const RECONNECT_COOLDOWN: Duration = Duration::from_secs(2);
 
 /// Media type returned by CINF command.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,14 +28,21 @@ pub struct MediaInfo {
 
 /// AMCP client for communicating with CasparCG Server.
 ///
-/// If the TCP connection drops, commands will automatically reconnect
-/// and retry once before returning an error.
+/// Tracks connection state and enforces a cooldown between reconnect attempts.
+/// When connected, commands are sent normally; on failure the client marks itself
+/// disconnected and returns the error immediately.
+///
+/// While disconnected, reconnect attempts are rate-limited to once per
+/// [`RECONNECT_COOLDOWN`].
 pub struct AmcpClient {
     host: String,
     port: u16,
     tcp_timeout: Duration,
     writer: BufWriter<tokio::io::WriteHalf<TcpStream>>,
     reader: BufReader<tokio::io::ReadHalf<TcpStream>>,
+    reconnect_cooldown: Duration,
+    connected: bool,
+    last_reconnect_attempt: Option<Instant>,
 }
 
 impl AmcpClient {
@@ -47,6 +56,9 @@ impl AmcpClient {
             tcp_timeout,
             reader,
             writer,
+            reconnect_cooldown: RECONNECT_COOLDOWN,
+            connected: true,
+            last_reconnect_attempt: None,
         })
     }
 
@@ -79,16 +91,45 @@ impl AmcpClient {
     }
 
     /// Send a command and wait for response.
-    /// On I/O failure, reconnects once and retries before returning an error.
+    ///
+    /// When connected, sends directly. On failure marks disconnected and
+    /// returns the error. When disconnected, attempts reconnection subject
+    /// to the cooldown timer.
     #[tracing::instrument(skip(self))]
     async fn send(&mut self, command: &str) -> Result<String> {
-        match self.send_once(command).await {
-            Ok(response) => Ok(response),
-            Err(first_err) => {
-                tracing::warn!("AMCP command failed ({}), reconnecting", first_err);
-                self.reconnect().await?;
-                self.send_once(command).await
+        if self.connected {
+            match self.send_once(command).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    tracing::warn!("AMCP send failed, marking disconnected: {}", e);
+                    self.connected = false;
+                    Err(e)
+                }
             }
+        } else {
+            self.try_reconnect_and_send(command).await
+        }
+    }
+
+    /// Attempt reconnection (respecting cooldown) and send the command.
+    async fn try_reconnect_and_send(&mut self, command: &str) -> Result<String> {
+        if let Some(last) = self.last_reconnect_attempt {
+            if last.elapsed() < self.reconnect_cooldown {
+                return Err(anyhow!("CasparCG disconnected, waiting to reconnect"));
+            }
+        }
+
+        self.last_reconnect_attempt = Some(Instant::now());
+
+        match self.reconnect().await {
+            Ok(()) => {
+                self.connected = true;
+                self.send_once(command).await.map_err(|e| {
+                    self.connected = false;
+                    e
+                })
+            }
+            Err(e) => Err(anyhow!("CasparCG reconnect failed: {}", e)),
         }
     }
 
