@@ -285,7 +285,10 @@ impl AmcpClient {
             let after_quote = line[1..]
                 .find('"')
                 .ok_or_else(|| anyhow!("failed to parse CINF response"))?;
-            line[after_quote + 3..].split_whitespace().collect()
+            line.get(after_quote + 3..)
+                .ok_or_else(|| anyhow!("failed to parse CINF response: {}", line))?
+                .split_whitespace()
+                .collect()
         } else {
             line.split_whitespace().skip(1).collect()
         };
