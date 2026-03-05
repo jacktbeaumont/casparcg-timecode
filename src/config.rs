@@ -138,6 +138,9 @@ pub struct Config {
     pub caspar_channel: u16,
     /// Audio device name for LTC input (None = default device)
     pub audio_device: Option<String>,
+    /// Zero-indexed audio channel to read LTC from. Default is 0 (first channel).
+    #[serde(default)]
+    pub audio_channel: usize,
     /// Milliseconds without a new LTC frame before playback is considered paused
     pub pause_detection_threshold_ms: u64,
     /// Frame difference above which a timecode jump triggers a resync. Default is 10 frames.
@@ -219,6 +222,7 @@ mod tests {
             caspar_port: 5250,
             caspar_channel: 1,
             audio_device: None,
+            audio_channel: 0,
             pause_detection_threshold_ms: 500,
             resync_threshold_frames: 10,
             tc_fallback_fps: 25,

@@ -92,17 +92,24 @@ async fn run(
     let sample_rate = device_config.sample_rate();
     let channels: usize = device_config.channels().into();
     anyhow::ensure!(channels >= 1, "audio device reports 0 channels");
+    anyhow::ensure!(
+        config.audio_channel < channels,
+        "audio_channel {} out of range for device with {} channels",
+        config.audio_channel,
+        channels,
+    );
 
     tracing::info!(
-        "audio device: {} @ {} Hz ({} ch)",
+        "audio device: {} @ {} Hz ({} ch, reading ch {})",
         device_name(&device),
         sample_rate,
         channels,
+        config.audio_channel,
     );
     tracing::info!("listening for LTC timecode (Ctrl+C to stop)");
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<f32>>(64);
-    let stream = build_audio_stream(&device, &device_config, channels, tx)?;
+    let stream = build_audio_stream(&device, &device_config, channels, config.audio_channel, tx)?;
     stream.play()?;
 
     let mut parser = TimecodeParser::new(
@@ -158,6 +165,7 @@ fn build_audio_stream(
     device: &cpal::Device,
     device_config: &cpal::SupportedStreamConfig,
     channels: usize,
+    channel: usize,
     tx: tokio::sync::mpsc::Sender<Vec<f32>>,
 ) -> Result<cpal::Stream> {
     let err_fn = |err: cpal::StreamError| {
@@ -170,7 +178,7 @@ fn build_audio_stream(
         cpal::SampleFormat::F32 => device.build_input_stream(
             &device_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                let samples: Vec<f32> = data.iter().step_by(channels).copied().collect();
+                let samples: Vec<f32> = data.iter().skip(channel).step_by(channels).copied().collect();
                 let _ = tx.try_send(samples);
             },
             err_fn,
@@ -181,6 +189,7 @@ fn build_audio_stream(
             move |data: &[i16], _: &cpal::InputCallbackInfo| {
                 let samples: Vec<f32> = data
                     .iter()
+                    .skip(channel)
                     .step_by(channels)
                     .map(|&s| s as f32 / i16::MAX as f32)
                     .collect();
