@@ -173,6 +173,10 @@ impl Config {
             anyhow::bail!("tc_fallback_fps must be greater than 0");
         }
 
+        if self.pause_detection_threshold_ms < 10 {
+            anyhow::bail!("pause_detection_threshold_ms must be at least 10");
+        }
+
         for track in &self.tracks {
             let mut seen_layers: HashSet<u16> = HashSet::new();
             for media_layer in &track.media {
