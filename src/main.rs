@@ -10,12 +10,12 @@ use clap::Parser;
 use config::Config;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use media_controller::MediaController;
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use timecode_parser::{TimecodeEvent, TimecodeParser};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use tui::state::{self, AppState, TcStatus};
+use tui::state::{self, TcStatus, UiMessage};
 
 /// CasparCG Timecode Client
 #[derive(Parser, Debug)]
@@ -67,7 +67,7 @@ fn get_audio_device(config: &Config) -> Result<cpal::Device> {
     }
 }
 
-async fn run(config: Config, state: Arc<Mutex<AppState>>, token: CancellationToken) -> Result<()> {
+async fn run(config: Config, ui_tx: mpsc::Sender<UiMessage>, token: CancellationToken) -> Result<()> {
     tracing::info!(
         "connecting to CasparCG at {}:{}",
         config.caspar_host,
@@ -79,10 +79,9 @@ async fn run(config: Config, state: Arc<Mutex<AppState>>, token: CancellationTok
 
     let mut controller = MediaController::new(&config, amcp).await?;
 
-    {
-        let mut s = state.lock().unwrap();
-        s.layers = state::layer_displays(controller.layer_states());
-    }
+    let _ = ui_tx.try_send(UiMessage::Layers(state::layer_displays(
+        controller.layer_states(),
+    )));
 
     let device = get_audio_device(&config)?;
     let device_config = device.default_input_config()?;
@@ -130,30 +129,19 @@ async fn run(config: Config, state: Arc<Mutex<AppState>>, token: CancellationTok
         }
 
         while let Some(event) = parser.next(now) {
-            {
-                // Can this cause the timecode tool to fail?
-                let mut s = state.lock().unwrap();
-                match &event {
-                    TimecodeEvent::Playing(pos) => {
-                        s.tc = pos.to_string();
-                        s.tc_status = TcStatus::Playing;
-                    }
-                    TimecodeEvent::Paused(pos) => {
-                        s.tc = pos.to_string();
-                        s.tc_status = TcStatus::Paused;
-                    }
-                }
-                s.last_tc_update = Some(Instant::now());
-            }
+            let (tc, status) = match &event {
+                TimecodeEvent::Playing(pos) => (pos.to_string(), TcStatus::Playing),
+                TimecodeEvent::Paused(pos) => (pos.to_string(), TcStatus::Paused),
+            };
+            let _ = ui_tx.try_send(UiMessage::Timecode { tc, status });
 
             if let Err(e) = controller.handle_event(&event).await {
                 tracing::error!("AMCP error: {}", e);
             }
 
-            {
-                let mut s = state.lock().unwrap();
-                s.layers = tui::state::layer_displays(controller.layer_states());
-            }
+            let _ = ui_tx.try_send(UiMessage::Layers(state::layer_displays(
+                controller.layer_states(),
+            )));
         }
     }
 
@@ -214,14 +202,14 @@ async fn main() -> Result<()> {
 
     let config = Config::from_file(&args.config)?;
 
-    let state = Arc::new(Mutex::new(AppState::new()));
+    let (ui_tx, ui_rx) = mpsc::channel::<UiMessage>(256);
 
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
-        .with(tui::log_layer::TuiLogLayer::new(state.clone()))
+        .with(tui::log_layer::TuiLogLayer::new(ui_tx.clone()))
         .init();
 
     tracing::info!("loaded config from: {}", args.config);
@@ -231,9 +219,9 @@ async fn main() -> Result<()> {
         let _tui = tui::enter()?;
 
         let token = CancellationToken::new();
-        let tui_task = tokio::spawn(tui::run(state.clone(), token.clone()));
+        let tui_task = tokio::spawn(tui::run(ui_rx, token.clone()));
 
-        let r = run(config, state, token.clone()).await;
+        let r = run(config, ui_tx, token.clone()).await;
 
         token.cancel();
         let _ = tui_task.await;

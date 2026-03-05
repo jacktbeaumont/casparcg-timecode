@@ -1,15 +1,15 @@
-//! Tracing layer that routes log events into [`AppState`] for TUI display.
+//! Tracing layer that routes log events to the TUI via a mpsc channel.
 
-use super::state::{AppState, LogEntry};
-use std::sync::{Arc, Mutex};
+use super::state::{LogEntry, UiMessage};
+use tokio::sync::mpsc;
 
 pub struct TuiLogLayer {
-    state: Arc<Mutex<AppState>>,
+    tx: mpsc::Sender<UiMessage>,
 }
 
 impl TuiLogLayer {
-    pub fn new(state: Arc<Mutex<AppState>>) -> Self {
-        Self { state }
+    pub fn new(tx: mpsc::Sender<UiMessage>) -> Self {
+        Self { tx }
     }
 }
 
@@ -29,9 +29,7 @@ impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for TuiLogLayer {
             message: visitor.formatted(),
         };
 
-        if let Ok(mut s) = self.state.lock() {
-            s.push_log(entry);
-        }
+        let _ = self.tx.try_send(UiMessage::Log(entry));
     }
 }
 

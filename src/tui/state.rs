@@ -1,4 +1,4 @@
-//! Shared runtime state read by the TUI renderer and written by the main loop.
+//! TUI-local runtime state, updated via messages from the main loop.
 
 use crate::config::LayerId;
 use crate::media_controller::LayerState;
@@ -72,4 +72,28 @@ impl AppState {
             self.logs.pop_back();
         }
     }
+
+    /// Apply a [`UiMessage`] to update the local state.
+    pub fn apply(&mut self, msg: UiMessage) {
+        match msg {
+            UiMessage::Timecode { tc, status } => {
+                self.tc = tc;
+                self.tc_status = status;
+                self.last_tc_update = Some(Instant::now());
+            }
+            UiMessage::Layers(layers) => {
+                self.layers = layers;
+            }
+            UiMessage::Log(entry) => {
+                self.push_log(entry);
+            }
+        }
+    }
+}
+
+/// Message to update the UI state.
+pub enum UiMessage {
+    Timecode { tc: String, status: TcStatus },
+    Layers(Vec<LayerDisplay>),
+    Log(LogEntry),
 }

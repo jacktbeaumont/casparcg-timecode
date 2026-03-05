@@ -8,15 +8,12 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
-use state::AppState;
-use std::{
-    io::stdout,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use ratatui::{Terminal, backend::CrosstermBackend};
+use state::{AppState, UiMessage};
+use std::{io::stdout, time::Duration};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 /// Restores the terminal to its original state when dropped.
@@ -44,15 +41,18 @@ pub fn enter() -> Result<TuiHandle> {
 }
 
 /// Render loop, redrawing at ~10 fps.
-pub async fn run(state: Arc<Mutex<AppState>>, token: CancellationToken) -> Result<()> {
+pub async fn run(mut rx: mpsc::Receiver<UiMessage>, token: CancellationToken) -> Result<()> {
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
+    let mut state = AppState::new();
 
-    // TODO review locking concerns
     loop {
-        // Snapshot state under the lock, then render without holding it.
-        let snapshot = state.lock().unwrap().clone();
-        terminal.draw(|f| ui::render(f, &snapshot))?;
+        // Drain all pending messages before rendering.
+        while let Ok(msg) = rx.try_recv() {
+            state.apply(msg);
+        }
+
+        terminal.draw(|f| ui::render(f, &state))?;
 
         if token.is_cancelled() {
             break;
