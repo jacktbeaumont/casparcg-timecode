@@ -86,7 +86,7 @@ impl AmcpClient {
         let (reader, writer) = Self::tcp_connect(&self.host, self.port, self.tcp_timeout).await?;
         self.reader = reader;
         self.writer = writer;
-        tracing::info!("Reconnected to CasparCG at {}:{}", self.host, self.port);
+        tracing::info!("reconnected to CasparCG at {}:{}", self.host, self.port);
         Ok(())
     }
 
