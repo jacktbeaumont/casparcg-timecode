@@ -29,8 +29,8 @@ pub struct MediaInfo {
 /// AMCP client for communicating with CasparCG Server.
 ///
 /// Tracks connection state and enforces a cooldown between reconnect attempts.
-/// When connected, commands are sent normally; on failure the client marks itself
-/// disconnected and returns the error immediately.
+/// When connected, commands are sent normally; on failure the client marks
+/// itself disconnected and returns the error immediately.
 ///
 /// While disconnected, reconnect attempts are rate-limited to once per
 /// [`RECONNECT_COOLDOWN`].
@@ -168,27 +168,6 @@ impl AmcpClient {
             .await
             .map_err(|_| anyhow!("read timed out"))??;
         Ok(line)
-    }
-
-    /// Begin a batch transaction.
-    ///
-    /// All subsequent commands are queued until [`end_batch`](Self::end_batch)
-    /// is called, at which point they execute atomically on the server.
-    pub async fn begin_batch(&mut self) -> Result<()> {
-        self.send("BEGIN").await?;
-        Ok(())
-    }
-
-    /// Commit a batch transaction, executing all queued commands atomically.
-    pub async fn end_batch(&mut self) -> Result<()> {
-        self.send("COMMIT").await?;
-        Ok(())
-    }
-
-    /// Discard a batch transaction without executing.
-    pub async fn discard_batch(&mut self) -> Result<()> {
-        self.send("DISCARD").await?;
-        Ok(())
     }
 
     /// Play a file on a layer, optionally seeking to a frame

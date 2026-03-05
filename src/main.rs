@@ -87,6 +87,7 @@ async fn run(config: Config, ui_tx: mpsc::Sender<UiMessage>, token: Cancellation
     let device_config = device.default_input_config()?;
     let sample_rate = device_config.sample_rate();
     let channels: usize = device_config.channels().into();
+    anyhow::ensure!(channels >= 1, "audio device reports 0 channels");
 
     tracing::info!(
         "audio device: {} @ {} Hz ({} ch)",
