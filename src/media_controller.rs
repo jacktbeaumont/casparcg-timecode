@@ -122,6 +122,14 @@ impl MediaController {
                     anyhow::anyhow!("media info not found for: {}", layer_cfg.file)
                 })?;
 
+                if info.frame_rate <= 0.0 {
+                    anyhow::bail!(
+                        "media '{}' has invalid frame rate: {}",
+                        layer_cfg.file,
+                        info.frame_rate
+                    );
+                }
+
                 let item = MediaItem {
                     layer: layer_cfg.layer,
                     filename: layer_cfg.file.clone(),
@@ -326,7 +334,8 @@ impl MediaController {
                         prior_state = ?*state,
                         "Seeking layer to target frame",
                     );
-                    if let Err(e) = self.amcp
+                    if let Err(e) = self
+                        .amcp
                         .play(self.config.channel, *layer, &media.filename, Some(offset))
                         .await
                     {
@@ -382,7 +391,8 @@ impl MediaController {
                             seek_frame = offset,
                             "Starting new media on layer",
                         );
-                        if let Err(e) = self.amcp
+                        if let Err(e) = self
+                            .amcp
                             .play(self.config.channel, *layer, &media.filename, Some(offset))
                             .await
                         {

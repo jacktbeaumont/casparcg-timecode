@@ -169,6 +169,10 @@ impl Config {
     pub(crate) fn validate(&self) -> Result<()> {
         use std::collections::HashSet;
 
+        if self.tc_fallback_fps == 0 {
+            anyhow::bail!("tc_fallback_fps must be greater than 0");
+        }
+
         for track in &self.tracks {
             let mut seen_layers: HashSet<u16> = HashSet::new();
             for media_layer in &track.media {
