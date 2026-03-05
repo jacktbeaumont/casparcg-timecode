@@ -56,7 +56,7 @@ impl MediaItem {
     }
 
     /// Computes the server frame to SEEK to for the given timecode position.
-    pub fn media_offset(&self, pos: &TimecodePosition, server_fps: f32) -> u32 {
+    fn media_offset(&self, pos: &TimecodePosition, server_fps: f32) -> u32 {
         let tc_fps = pos.fps as f32;
         let timecode_offset = pos.total_frames - self.start_frame(tc_fps);
         (timecode_offset as f32 * server_fps / tc_fps).round() as u32
