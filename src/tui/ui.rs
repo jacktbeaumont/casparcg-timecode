@@ -67,9 +67,9 @@ fn render_layers(f: &mut ratatui::Frame, state: &AppState, area: ratatui::layout
             .iter()
             .map(|layer| {
                 let (filename, color) = match &layer.state {
-                    LayerState::Playing { filename } => (filename, Color::Green),
-                    LayerState::Paused { filename } => (filename, Color::Yellow),
-                    LayerState::Stopped => (&"-".to_string(), Color::DarkGray),
+                    LayerState::Playing { filename } => (filename.as_str(), Color::Green),
+                    LayerState::Paused { filename } => (filename.as_str(), Color::Yellow),
+                    LayerState::Stopped => ("-", Color::DarkGray),
                 };
                 let line = Line::from(vec![
                     Span::styled(
