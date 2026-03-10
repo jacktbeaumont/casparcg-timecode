@@ -214,7 +214,7 @@ impl MediaController {
             match amcp.cinf(filename).await {
                 Ok(info) => {
                     tracing::debug!(
-                        "Validated media '{}': {:?}, {} frames, {:.2} fps",
+                        "validated media '{}': {:?}, {} frames, {:.2} fps",
                         filename,
                         info.media_type,
                         info.frame_count,
@@ -272,10 +272,10 @@ impl MediaController {
 
     /// Handles a pause event by pausing all currently playing layers.
     async fn handle_paused(&mut self, pos: &TimecodePosition) -> Result<()> {
-        tracing::info!("Pause at {}", pos);
+        tracing::info!("pause at {}", pos);
         for (layer, state) in &mut self.layer_states {
             if let LayerState::Playing { filename } = state {
-                tracing::info!("Pausing layer {} ({})", layer, filename);
+                tracing::info!("pausing layer {} ({})", layer, filename);
                 if let Err(e) = self.amcp.pause(self.config.channel, **layer).await {
                     tracing::error!("failed to pause layer {}: {}", layer, e);
                     continue;
@@ -329,7 +329,7 @@ impl MediaController {
                         filename = %media.filename,
                         seek_frame = offset,
                         prior_state = ?*state,
-                        "Seeking layer to target frame",
+                        "seeking layer to target frame",
                     );
                     if let Err(e) = self
                         .amcp
@@ -345,7 +345,7 @@ impl MediaController {
                 }
                 None => {
                     if !matches!(state, LayerState::Stopped) {
-                        tracing::info!("Stopping layer {}", layer);
+                        tracing::info!("stopping layer {}", layer);
                         if let Err(e) = self.amcp.stop(self.config.channel, *layer).await {
                             tracing::error!("failed to stop layer {}: {}", layer, e);
                             continue;
@@ -384,7 +384,7 @@ impl MediaController {
                             layer = *layer,
                             filename = %media.filename,
                             seek_frame = offset,
-                            "Starting new media on layer",
+                            "starting new media on layer",
                         );
                         if let Err(e) = self
                             .amcp
@@ -401,7 +401,7 @@ impl MediaController {
                 }
                 None => {
                     if !matches!(state, LayerState::Stopped) {
-                        tracing::info!("Stopping layer {} (media ended)", layer);
+                        tracing::info!("stopping layer {} (media ended)", layer);
                         if let Err(e) = self.amcp.stop(self.config.channel, *layer).await {
                             tracing::error!("failed to stop layer {}: {}", layer, e);
                             continue;
