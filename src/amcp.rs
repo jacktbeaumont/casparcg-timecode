@@ -222,15 +222,15 @@ impl AmcpClient {
     pub async fn channel_fps(&mut self, channel: u16) -> Result<f32> {
         self.send(&format!("INFO {}", channel)).await?;
 
-        // Read XML lines until </channel> or empty line
+        // Read XML body until the empty-line terminator.
+        // CasparCG uses \n within the XML but terminates the response with \r\n\r\n.
         let mut xml = String::new();
         loop {
             let line = self.read_line().await?;
-            let done = line.trim().is_empty() || line.contains("</channel>");
-            xml.push_str(&line);
-            if done {
+            if line.trim().is_empty() {
                 break;
             }
+            xml.push_str(&line);
         }
 
         Self::parse_channel_fps(&xml)
@@ -304,7 +304,8 @@ impl AmcpClient {
             let after_quote = stripped
                 .find('"')
                 .ok_or_else(|| anyhow!("failed to parse CINF response"))?;
-            stripped.get(after_quote + 2..)
+            stripped
+                .get(after_quote + 2..)
                 .ok_or_else(|| anyhow!("failed to parse CINF response: {}", line))?
                 .split_whitespace()
                 .collect()
