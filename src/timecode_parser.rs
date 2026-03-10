@@ -137,13 +137,13 @@ impl TimecodeParser {
     }
 
     fn check_timeout(&mut self, now: Instant) -> Option<TimecodeEvent> {
-        if let PlayState::Playing { tc, received_at } = &self.state {
-            if now.duration_since(*received_at) >= self.pause_timeout {
-                let pos = TimecodePosition::new(tc.clone(), self.fallback_fps);
-                let event = TimecodeEvent::Paused(pos);
-                self.state = PlayState::Paused { tc: tc.clone() };
-                return Some(event);
-            }
+        if let PlayState::Playing { tc, received_at } = &self.state
+            && now.duration_since(*received_at) >= self.pause_timeout
+        {
+            let pos = TimecodePosition::new(tc.clone(), self.fallback_fps);
+            let event = TimecodeEvent::Paused(pos);
+            self.state = PlayState::Paused { tc: tc.clone() };
+            return Some(event);
         }
         None
     }

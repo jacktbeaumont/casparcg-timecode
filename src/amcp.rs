@@ -113,10 +113,10 @@ impl AmcpClient {
 
     /// Attempt reconnection (respecting cooldown) and send the command.
     async fn try_reconnect_and_send(&mut self, command: &str) -> Result<String> {
-        if let Some(last) = self.last_reconnect_attempt {
-            if last.elapsed() < self.reconnect_cooldown {
-                return Err(anyhow!("CasparCG disconnected, waiting to reconnect"));
-            }
+        if let Some(last) = self.last_reconnect_attempt
+            && last.elapsed() < self.reconnect_cooldown
+        {
+            return Err(anyhow!("CasparCG disconnected, waiting to reconnect"));
         }
 
         self.last_reconnect_attempt = Some(Instant::now());
@@ -124,9 +124,8 @@ impl AmcpClient {
         match self.reconnect().await {
             Ok(()) => {
                 self.connected = true;
-                self.send_once(command).await.map_err(|e| {
+                self.send_once(command).await.inspect_err(|_| {
                     self.connected = false;
-                    e
                 })
             }
             Err(e) => Err(anyhow!("CasparCG reconnect failed: {}", e)),
@@ -301,11 +300,11 @@ impl AmcpClient {
         let line = line.trim();
 
         // Filename is discarded to use request filename
-        let parts: Vec<&str> = if line.starts_with('"') {
-            let after_quote = line[1..]
+        let parts: Vec<&str> = if let Some(stripped) = line.strip_prefix('"') {
+            let after_quote = stripped
                 .find('"')
                 .ok_or_else(|| anyhow!("failed to parse CINF response"))?;
-            line.get(after_quote + 3..)
+            stripped.get(after_quote + 2..)
                 .ok_or_else(|| anyhow!("failed to parse CINF response: {}", line))?
                 .split_whitespace()
                 .collect()
