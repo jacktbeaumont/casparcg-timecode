@@ -19,6 +19,8 @@ pub struct MediaItem {
     pub duration_frames: u32,
     /// The native framerate of this media is played at.
     pub fps: f32,
+    /// Frames to start playback earlier, compensating for output delay.
+    pub output_delay_frames: u32,
 }
 
 impl MediaItem {
@@ -38,9 +40,12 @@ impl MediaItem {
         start + self.duration_frames as f64 / self.fps as f64
     }
 
-    /// Returns the start frame of this media item in the timecode timeline at the given TC fps.
+    /// Returns the start frame of this media item in the timecode timeline at the given TC fps,
+    /// shifted earlier by `output_delay_frames` to compensate for output latency.
     fn start_frame(&self, tc_fps: f32) -> u32 {
-        self.start_tc.total_frames(tc_fps)
+        self.start_tc
+            .total_frames(tc_fps)
+            .saturating_sub(self.output_delay_frames)
     }
 
     /// Returns the end frame (exclusive) of this media item at the given TC fps.
@@ -136,6 +141,7 @@ impl MediaController {
                     start_tc: track.tc_start.clone(),
                     duration_frames: info.frame_count,
                     fps: info.frame_rate,
+                    output_delay_frames: config.output_delay_frames,
                 };
 
                 media_items.push(item);
@@ -438,6 +444,7 @@ mod tests {
             },
             duration_frames,
             fps,
+            output_delay_frames: 0,
         }
     }
 
@@ -489,5 +496,35 @@ mod tests {
             err.contains("scheduling conflict"),
             "unexpected error: {err}"
         );
+    }
+
+    #[test]
+    fn output_delay_activates_media_earlier() {
+        use crate::timecode_parser::TimecodePosition;
+
+        let mut item = media(10, "a.mp4", [1, 0, 0, 0], 250, 25.0);
+        item.output_delay_frames = 8;
+
+        // At 25fps, tc_start "01:00:00:00" = 90000 frames.
+        // With 8-frame delay, activation starts at 89992.
+        let pos_before = TimecodePosition::test(89991, 25);
+        let pos_at_delay = TimecodePosition::test(89992, 25);
+        let pos_at_original = TimecodePosition::test(90000, 25);
+
+        assert!(!item.is_active_at(&pos_before));
+        assert!(item.is_active_at(&pos_at_delay));
+        assert!(item.is_active_at(&pos_at_original));
+    }
+
+    #[test]
+    fn output_delay_seek_offset_is_zero_at_adjusted_start() {
+        let mut item = media(10, "a.mp4", [1, 0, 0, 0], 250, 25.0);
+        item.output_delay_frames = 8;
+
+        use crate::timecode_parser::TimecodePosition;
+        let pos = TimecodePosition::test(89992, 25);
+
+        // At the adjusted start, seek offset should be 0
+        assert_eq!(item.media_offset(&pos, 25.0), 0);
     }
 }

@@ -152,6 +152,9 @@ pub struct Config {
     /// Timeout in seconds for TCP connect and AMCP command I/O. Default is 5.
     #[serde(default = "default_tcp_timeout_secs")]
     pub tcp_timeout_secs: u64,
+    /// Frames to start playback earlier, compensating for output delay. Default is 0.
+    #[serde(default)]
+    pub output_delay_frames: u32,
     /// Track definitions
     pub tracks: Vec<Track>,
 }
@@ -227,6 +230,7 @@ mod tests {
             resync_threshold_frames: 10,
             tc_fallback_fps: 25,
             tcp_timeout_secs: 5,
+            output_delay_frames: 0,
             tracks,
         }
     }

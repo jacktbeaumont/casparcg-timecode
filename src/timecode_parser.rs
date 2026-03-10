@@ -43,6 +43,29 @@ impl TimecodePosition {
             total_frames,
         }
     }
+
+    /// Creates a `TimecodePosition` from raw total frames and fps, for testing.
+    #[cfg(test)]
+    pub fn test(total_frames: u32, fps: u8) -> Self {
+        let fps_u32 = fps as u32;
+        let f = total_frames % fps_u32;
+        let remaining = total_frames / fps_u32;
+        let s = remaining % 60;
+        let remaining = remaining / 60;
+        let m = remaining % 60;
+        let h = remaining / 60;
+        Self {
+            frame: TimecodeFrame::new(
+                h as u8,
+                m as u8,
+                s as u8,
+                f as u8,
+                FramesPerSecond::TwentyFive,
+            ),
+            fps,
+            total_frames,
+        }
+    }
 }
 
 impl std::fmt::Display for TimecodePosition {
