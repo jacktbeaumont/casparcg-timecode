@@ -365,21 +365,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_channel_fps_50() {
+    fn parse_channel_fps_50() {
         let xml = "<channel><format>720p5000</format><framerate>50</framerate><framerate>1</framerate></channel>";
         let fps = AmcpClient::parse_channel_fps(xml).unwrap();
         assert_eq!(fps, 50.0);
     }
 
     #[test]
-    fn test_parse_channel_fps_25() {
+    fn parse_channel_fps_25() {
         let xml = "<channel><format>1080i5000</format><framerate>25</framerate><framerate>1</framerate></channel>";
         let fps = AmcpClient::parse_channel_fps(xml).unwrap();
         assert_eq!(fps, 25.0);
     }
 
     #[test]
-    fn test_cinf_parses_spec_example() {
+    fn cinf_parses_spec_example() {
         let info =
             AmcpClient::parse_cinf_response("\"AMB\" MOVIE 6445960 20170413102935 268 1/25", "AMB")
                 .unwrap();
@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_parses_still_media_type() {
+    fn cinf_parses_still_media_type() {
         let info = AmcpClient::parse_cinf_response(
             "\"IMAGE\" STILL 1024000 20200101T120000 1 1/1",
             "IMAGE",
@@ -402,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_parses_audio_media_type() {
+    fn cinf_parses_audio_media_type() {
         let info = AmcpClient::parse_cinf_response(
             "\"SOUND\" AUDIO 2048000 20210615T093000 1000 1/48000",
             "SOUND",
@@ -414,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_parses_spaced_filename() {
+    fn cinf_parses_spaced_filename() {
         let info = AmcpClient::parse_cinf_response(
             "\"MY VIDEO FILE\" MOVIE 5000000 20240101T120000 500 1/25",
             "MY VIDEO FILE",
@@ -426,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_errors_on_unknown_media_type() {
+    fn cinf_errors_on_unknown_media_type() {
         let err = AmcpClient::parse_cinf_response(
             "\"FILE\" UNKNOWN 1000 20200101T120000 100 1/25",
             "FILE",
@@ -436,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_errors_on_invalid_frame_count() {
+    fn cinf_errors_on_invalid_frame_count() {
         let err = AmcpClient::parse_cinf_response(
             "\"FILE\" MOVIE 1000 20200101T120000 INVALID 1/25",
             "FILE",
@@ -446,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_errors_on_invalid_frame_rate() {
+    fn cinf_errors_on_invalid_frame_rate() {
         let err = AmcpClient::parse_cinf_response(
             "\"FILE\" MOVIE 1000 20200101T120000 100 INVALID",
             "FILE",
@@ -456,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cinf_errors_on_missing_fields() {
+    fn cinf_errors_on_missing_fields() {
         let err = AmcpClient::parse_cinf_response("\"FILE\" MOVIE", "FILE").unwrap_err();
         assert!(err.to_string().contains("failed to parse CINF response"));
     }
